@@ -86,10 +86,13 @@ static std::string getMultiarchTriple(const Driver &D,
   case llvm::Triple::x86_64:
     if (IsAndroid)
       return "x86_64-linux-android";
-    // We don't want this for x32, otherwise it will match x86_64 libs
-    if (TargetEnvironment != llvm::Triple::GNUX32 &&
-        D.getVFS().exists(SysRoot + "/lib/x86_64-linux-gnu"))
-      return "x86_64-linux-gnu";
+    if (TargetEnvironment == llvm::Triple::GNUX32) {
+      if (D.getVFS().exists(SysRoot + "/lib/x86_64-linux-gnux32"))
+        return "x86_64-linux-gnux32";
+    } else {
+      if (D.getVFS().exists(SysRoot + "/lib/x86_64-linux-gnu"))
+        return "x86_64-linux-gnu";
+    }
     break;
   case llvm::Triple::aarch64:
     if (IsAndroid)
@@ -672,6 +675,8 @@ void Linux::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
       // in use in any released version of Debian, so we should consider
       // removing them.
       "/usr/include/i686-linux-gnu/64", "/usr/include/i486-linux-gnu/64"};
+  const StringRef X32MultiarchIncludeDirs[] = {
+      "/usr/include/x86_64-linux-gnux32"};
   const StringRef X86MultiarchIncludeDirs[] = {
       "/usr/include/i386-linux-gnu",
 
@@ -713,7 +718,10 @@ void Linux::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
   ArrayRef<StringRef> MultiarchIncludeDirs;
   switch (getTriple().getArch()) {
   case llvm::Triple::x86_64:
-    MultiarchIncludeDirs = X86_64MultiarchIncludeDirs;
+    if (getTriple().getEnvironment() == llvm::Triple::GNUX32)
+      MultiarchIncludeDirs = X32MultiarchIncludeDirs;
+    else
+      MultiarchIncludeDirs = X86_64MultiarchIncludeDirs;
     break;
   case llvm::Triple::x86:
     MultiarchIncludeDirs = X86MultiarchIncludeDirs;
